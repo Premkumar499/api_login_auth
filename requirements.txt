@@ -4,5 +4,7 @@ pymongo
 python-dotenv
 pyjwt
 gunicorn
+werkzeug
 certifi
 requests
+dnspython
