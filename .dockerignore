@@ -1,0 +1,33 @@
+# Python cache
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Virtual environments
+venv/
+new_venv/
+env/
+ENV/
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Documentation (included in README.md in container)
+.env.example
+
+# Log files
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db

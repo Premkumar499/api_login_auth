@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual Environment
+venv/
+new_venv/
+env/
+ENV/
+
+# Environment Variables
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Flask
+instance/
+.webassets-cache
+*.log
+
+# Database
+*.db
+*.sqlite3
+
+# Deployment (not needed for HF)
+Procfile
+render.yaml
+gunicorn.ctl
