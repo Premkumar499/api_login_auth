@@ -11,15 +11,22 @@ def generate_otp():
     return random.randint(100000, 999999)
 
 def send_otp_email(to_email, otp):
-    msg = EmailMessage()
-    msg.set_content(f"Your OTP is: {otp}\nValid for 5 minutes.")
-    msg["Subject"] = "Account Verification OTP"
-    msg["From"] = EMAIL_ADDRESS
-    msg["To"] = to_email
+    try:
+        msg = EmailMessage()
+        msg.set_content(f"Your OTP is: {otp}\nValid for 5 minutes.")
+        msg["Subject"] = "Account Verification OTP"
+        msg["From"] = EMAIL_ADDRESS
+        msg["To"] = to_email
 
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-        server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-        server.send_message(msg)
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+            server.send_message(msg)
+    except smtplib.SMTPAuthenticationError as e:
+        print(f"SMTP Authentication Error: {e}")
+        raise Exception("Gmail authentication failed. Check EMAIL_ADDRESS and EMAIL_PASSWORD")
+    except Exception as e:
+        print(f"Email sending error: {e}")
+        raise
 
 def hash_password(password):
     return generate_password_hash(password)

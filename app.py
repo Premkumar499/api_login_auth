@@ -86,20 +86,24 @@ def signup():
     if not email or not name:
         return jsonify({"error": "Email and name are required"}), 400
 
-    # Check if user already exists (either registered or pending OTP verification)
+    # Check if user already exists (registered)
     if users_col.find_one({"email": email}):
         return jsonify({"error": "User already exists"}), 400
     
-    # Check if there's already a pending verification for this email
-    existing_otp = otp_col.find_one({"email": email, "verified": False})
-    if existing_otp and not existing_otp.get("type"):
-        return jsonify({"error": "OTP already sent. Please verify or wait for expiry."}), 400
+    # Delete any old/expired OTP records for this email
+    otp_col.delete_many({"email": email})
 
     otp = generate_otp()
     expires_at = datetime.now(timezone.utc) + timedelta(minutes=5)
 
-    otp_col.delete_many({"email": email})
+    # Try to send email FIRST before saving to database
+    try:
+        send_otp_email(email, otp)
+    except Exception as e:
+        print(f"Failed to send OTP email: {str(e)}")
+        return jsonify({"error": "Failed to send OTP email. Please check your email address or try again later."}), 500
 
+    # Only save to database if email was sent successfully
     otp_col.insert_one({
         "email": email,
         "name": name,
@@ -107,11 +111,6 @@ def signup():
         "expires_at": expires_at,
         "verified": False
     })
-
-    try:
-        send_otp_email(email, otp)
-    except:
-        return jsonify({"error": "Failed to send OTP email"}), 500
 
     return jsonify({"message": "OTP sent to email. Please verify."}), 200
 
@@ -306,8 +305,23 @@ def verify_otp():
         "redirect": "set-password",
         "email": email
     }), 200
-    return jsonify({"message": "Account verified successfully"})
 
+
+# ------------------ CLEAR STUCK OTP (Development/Debug) ------------------
+
+@app.route("/auth/clear-otp", methods=["POST"])
+def clear_otp():
+    """Clear stuck OTP records for an email - useful for debugging"""
+    data = request.json
+    email = data.get("email", "").strip()
+
+    if not email:
+        return jsonify({"error": "Email required"}), 400
+
+    result = otp_col.delete_many({"email": email})
+    return jsonify({
+        "message": f"Cleared {result.deleted_count} OTP record(s) for {email}"
+    }), 200
 
 
 # ------------------ LOGIN ------------------
