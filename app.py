@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from datetime import datetime, timedelta, timezone
 import jwt
+import os
 from functools import wraps
 
 from config import JWT_SECRET
@@ -11,6 +12,28 @@ from auth import generate_otp, send_otp_email, create_jwt, hash_password, verify
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})   # set frontend domain here 
+
+
+# ------------------ ROOT & HEALTH CHECK ------------------
+
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({
+        "message": "API is running",
+        "version": "1.0",
+        "endpoints": {
+            "auth": ["/auth/signup", "/auth/login", "/auth/verify-otp", "/auth/set-password", 
+                    "/auth/forgot-password", "/auth/verify-reset-otp", "/auth/reset-password"],
+            "user": ["/profile"],
+            "content": ["/levels", "/topics/<level>"],
+            "admin": ["/admin/stats", "/admin/users", "/topic", "/admin/make-admin", 
+                     "/admin/remove-admin", "/admin/delete-user"]
+        }
+    }), 200
+
+@app.route("/health", methods=["GET"])
+def health():
+    return jsonify({"status": "healthy"}), 200
 
 
 # ------------------ AUTH MIDDLEWARE ------------------
@@ -484,4 +507,5 @@ def delete_topic(title):
 # --------------------
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 7860))
+    app.run(host="0.0.0.0", port=port, debug=False)

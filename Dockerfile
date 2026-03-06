@@ -11,10 +11,9 @@ COPY app.py .
 COPY auth.py .
 COPY config.py .
 COPY database.py .
-COPY .env .
 
 # Expose port
 EXPOSE 7860
 
 # Run the application with gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:7860", "--workers", "2", "app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:7860", "--workers", "2", "--timeout", "120", "app:app"]
