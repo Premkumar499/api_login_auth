@@ -289,20 +289,34 @@ def verify_otp():
     email = data.get("email", "").strip()
     otp = str(data.get("otp", "")).strip()
 
+    if not email or not otp:
+        return jsonify({"error": "Email and OTP are required"}), 400
+
     record = otp_col.find_one({"email": email})
 
     if not record:
-        return jsonify({"error": "OTP not found"}), 400
+        return jsonify({"error": "OTP not found. Please signup first."}), 400
 
-    if str(record["otp"]) != otp:
-        return jsonify({"error": "Invalid OTP"}), 400
+    # Debug logging
+    stored_otp = str(record["otp"]).strip()
+    print(f"🔍 Verifying OTP for {email}")
+    print(f"   Received OTP: '{otp}' (type: {type(otp).__name__})")
+    print(f"   Stored OTP: '{stored_otp}' (type: {type(record['otp']).__name__})")
+    print(f"   Match: {stored_otp == otp}")
+
+    if stored_otp != otp:
+        return jsonify({
+            "error": "Invalid OTP",
+            "hint": f"Expected {len(stored_otp)} digits, got {len(otp)} digits"
+        }), 400
 
     expires_at = record["expires_at"]
     if expires_at.tzinfo is None:
         expires_at = expires_at.replace(tzinfo=timezone.utc)
 
     if datetime.now(timezone.utc) > expires_at:
-        return jsonify({"error": "OTP expired"}), 400
+        otp_col.delete_one({"email": email})
+        return jsonify({"error": "OTP expired. Please request a new one."}), 400
 
     # Mark OTP as verified, don't create user yet (will be created after password is set)
     otp_col.update_one(
@@ -331,6 +345,28 @@ def clear_otp():
     result = otp_col.delete_many({"email": email})
     return jsonify({
         "message": f"Cleared {result.deleted_count} OTP record(s) for {email}"
+    }), 200
+
+
+@app.route("/auth/check-otp", methods=["POST"])
+def check_otp():
+    """Check OTP status for an email - development only"""
+    data = request.json
+    email = data.get("email", "").strip()
+
+    if not email:
+        return jsonify({"error": "Email required"}), 400
+
+    record = otp_col.find_one({"email": email}, {"_id": 0, "otp": 1, "verified": 1, "expires_at": 1})
+    
+    if not record:
+        return jsonify({"error": "No OTP found for this email"}), 404
+
+    return jsonify({
+        "email": email,
+        "otp": str(record["otp"]),
+        "verified": record.get("verified", False),
+        "expires_at": record["expires_at"].isoformat() if record.get("expires_at") else None
     }), 200
 
 
