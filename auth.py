@@ -2,6 +2,7 @@ import random
 import jwt
 from datetime import datetime, timedelta, timezone
 import smtplib
+import socket
 from email.message import EmailMessage
 from werkzeug.security import generate_password_hash, check_password_hash
 from config import EMAIL_ADDRESS, EMAIL_PASSWORD, JWT_SECRET, JWT_EXPIRY_SECONDS
@@ -11,6 +12,10 @@ def generate_otp():
     return random.randint(100000, 999999)
 
 def send_otp_email(to_email, otp):
+    # Set global socket timeout as fallback
+    old_timeout = socket.getdefaulttimeout()
+    socket.setdefaulttimeout(15)
+    
     try:
         msg = EmailMessage()
         msg.set_content(f"Your OTP is: {otp}\nValid for 5 minutes.")
@@ -19,19 +24,22 @@ def send_otp_email(to_email, otp):
         msg["To"] = to_email
 
         # Add timeout to prevent hanging
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10) as server:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=15) as server:
             server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
             server.send_message(msg)
         print(f"✅ OTP email sent to {to_email}")
     except smtplib.SMTPAuthenticationError as e:
         print(f"❌ SMTP Authentication Error: {e}")
-        raise Exception("Gmail authentication failed. Check EMAIL_ADDRESS and EMAIL_PASSWORD")
-    except TimeoutError as e:
-        print(f"❌ Email timeout: {e}")
-        raise Exception("Email sending timed out. SMTP may be blocked.")
+        raise Exception("Gmail authentication failed")
+    except (socket.timeout, TimeoutError, OSError) as e:
+        print(f"❌ Email timeout or connection error: {e}")
+        raise Exception("Email service timeout - SMTP may be blocked")
     except Exception as e:
-        print(f"❌ Email sending error: {e}")
+        print(f"❌ Email sending error: {type(e).__name__}: {e}")
         raise
+    finally:
+        # Restore original timeout
+        socket.setdefaulttimeout(old_timeout)
 
 def hash_password(password):
     return generate_password_hash(password)
