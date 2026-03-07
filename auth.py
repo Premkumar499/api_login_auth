@@ -18,14 +18,19 @@ def send_otp_email(to_email, otp):
         msg["From"] = EMAIL_ADDRESS
         msg["To"] = to_email
 
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        # Add timeout to prevent hanging
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10) as server:
             server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
             server.send_message(msg)
+        print(f"✅ OTP email sent to {to_email}")
     except smtplib.SMTPAuthenticationError as e:
-        print(f"SMTP Authentication Error: {e}")
+        print(f"❌ SMTP Authentication Error: {e}")
         raise Exception("Gmail authentication failed. Check EMAIL_ADDRESS and EMAIL_PASSWORD")
+    except TimeoutError as e:
+        print(f"❌ Email timeout: {e}")
+        raise Exception("Email sending timed out. SMTP may be blocked.")
     except Exception as e:
-        print(f"Email sending error: {e}")
+        print(f"❌ Email sending error: {e}")
         raise
 
 def hash_password(password):

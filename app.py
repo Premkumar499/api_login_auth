@@ -99,11 +99,14 @@ def signup():
     # Try to send email FIRST before saving to database
     try:
         send_otp_email(email, otp)
+        email_sent = True
     except Exception as e:
-        print(f"Failed to send OTP email: {str(e)}")
-        return jsonify({"error": "Failed to send OTP email. Please check your email address or try again later."}), 500
+        print(f"⚠️  Failed to send OTP email: {str(e)}")
+        print(f"🔐 DEVELOPMENT MODE - OTP for {email}: {otp}")
+        # For HF deployment, still allow signup but log OTP
+        email_sent = False
 
-    # Only save to database if email was sent successfully
+    # Save to database (even if email failed, for development/testing)
     otp_col.insert_one({
         "email": email,
         "name": name,
@@ -112,7 +115,14 @@ def signup():
         "verified": False
     })
 
-    return jsonify({"message": "OTP sent to email. Please verify."}), 200
+    if email_sent:
+        return jsonify({"message": "OTP sent to email. Please verify."}), 200
+    else:
+        return jsonify({
+            "message": "Email service unavailable. Check server logs for OTP.",
+            "development_mode": True,
+            "otp": otp  # Only for development - remove in production!
+        }), 200
 
 
 
